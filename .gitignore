@@ -1,0 +1,7 @@
+build/
+.cache
+subprojects/minhook
+subprojects/packagecache
+subprojects/curl-8.10.1
+subprojects/libpng-1.6.46
+subprojects/discord

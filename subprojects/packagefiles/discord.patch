@@ -1,0 +1,14 @@
+--- discord/meson.build
++++ discord/meson.build
+@@ -0,0 +1,11 @@
++project('discord', 'c', version: '1.0.0')
++
++c = meson.get_compiler('c')
++
++discord_inc = include_directories('c')
++discord_lib = c.find_library('discord_game_sdk', dirs: join_paths(meson.current_source_dir(), 'lib/x86_64'))
++discord_dep = declare_dependency(
++   dependencies: [discord_lib],
++	include_directories: discord_inc,
++)
++install_data('lib/x86_64/discord_game_sdk.dll', install_dir: get_option('libdir'))
