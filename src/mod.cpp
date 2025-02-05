@@ -144,6 +144,7 @@ HOOK (i64, SongEnd, 0x14043B040) {
 HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a3) {
 	originalSetPvLoadData (PvLoadData, info, a3);
 	if (auto sprites = pvSprites->find (info->pvId)) {
+		if (sprites.value ()->jkId[info->difficulty] <= 0) return;
 		pvInfo = (PvLoadInfo *)malloc (sizeof (PvLoadInfo));
 		memcpy (pvInfo, info, sizeof (PvLoadInfo));
 
