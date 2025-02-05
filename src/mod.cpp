@@ -141,50 +141,55 @@ HOOK (i64, SongEnd, 0x14043B040) {
 	return originalSongEnd ();
 }
 
+void
+NoJacketActivity () {
+	if (auto pppv = getPvDbEntry (pvInfo->pvId)) {
+		CreateDiscord ();
+		if (activities == nullptr || core == nullptr) return;
+
+		auto pv = **pppv;
+		DiscordActivity activity;
+		memset (&activity, 0, sizeof (activity));
+		strcpy (activity.assets.large_image, "now_printing");
+		strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
+		strcpy (activity.state, pv->name.c_str ());
+		switch (pvInfo->difficulty) {
+		case 0:
+			strcpy (activity.assets.small_image, "easy");
+			strcpy (activity.assets.small_text, "Easy");
+			break;
+		case 1:
+			strcpy (activity.assets.small_image, "normal");
+			strcpy (activity.assets.small_text, "Normal");
+			break;
+		case 2:
+			strcpy (activity.assets.small_image, "hard");
+			strcpy (activity.assets.small_text, "Hard");
+			break;
+		case 3:
+			strcpy (activity.assets.small_image, "extreme");
+			strcpy (activity.assets.small_text, "Extreme");
+			break;
+		}
+		if (pvInfo->extra == true) {
+			strcpy (activity.assets.small_image, "extra");
+			strcpy (activity.assets.small_text, "ExExtreme");
+		}
+		activity.timestamps.start = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ();
+
+		activities->clear_activity (activities, 0, UpdateActivityCallback);
+		activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
+	}
+}
+
 HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a3) {
 	originalSetPvLoadData (PvLoadData, info, a3);
 	if (auto sprites = pvSprites->find (info->pvId)) {
 		pvInfo = (PvLoadInfo *)malloc (sizeof (PvLoadInfo));
 		memcpy (pvInfo, info, sizeof (PvLoadInfo));
 
-		if (sprites.value ()->setId <= 0 || sprites.value ()->jkId[info->difficulty] <= 0) {
-			if (auto pppv = getPvDbEntry (info->pvId)) {
-				CreateDiscord ();
-				if (activities == nullptr || core == nullptr) return;
-
-				auto pv = **pppv;
-				DiscordActivity activity;
-				memset (&activity, 0, sizeof (activity));
-				strcpy (activity.assets.large_image, "miku");
-				strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
-				strcpy (activity.state, pv->name.c_str ());
-				switch (info->difficulty) {
-				case 0:
-					strcpy (activity.assets.small_image, "easy");
-					strcpy (activity.assets.small_text, "Easy");
-					break;
-				case 1:
-					strcpy (activity.assets.small_image, "normal");
-					strcpy (activity.assets.small_text, "Normal");
-					break;
-				case 2:
-					strcpy (activity.assets.small_image, "hard");
-					strcpy (activity.assets.small_text, "Hard");
-					break;
-				case 3:
-					strcpy (activity.assets.small_image, "extreme");
-					strcpy (activity.assets.small_text, "Extreme");
-					break;
-				}
-				if (pvInfo->extra == true) {
-					strcpy (activity.assets.small_image, "extra");
-					strcpy (activity.assets.small_text, "ExExtreme");
-				}
-				activity.timestamps.start = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ();
-
-				activities->clear_activity (activities, 0, UpdateActivityCallback);
-				activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
-			}
+		if (sprites.value ()->setId == (u32)-1 || sprites.value ()->jkId[info->difficulty] == (u32)-1) {
+			NoJacketActivity ();
 			return;
 		}
 
@@ -215,6 +220,7 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		hr                          = device->CreateTexture2D (&newDesc, nullptr, &newTexture);
 		if (FAILED (hr)) {
 			printf ("CreateTexture2D %lx\n", hr);
+			NoJacketActivity ();
 			return;
 		}
 
@@ -241,6 +247,7 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		hr                   = device->CreateBuffer (&cbDesc, &cbData, &buffer);
 		if (FAILED (hr)) {
 			printf ("CreateBuffer %lx\n", hr);
+			NoJacketActivity ();
 			return;
 		}
 		context->CSSetConstantBuffers (0, 1, &buffer);
@@ -249,6 +256,7 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		hr                                          = device->CreateShaderResourceView (texture, nullptr, &shaderReadTexture);
 		if (FAILED (hr)) {
 			printf ("CreateShaderResourceView %lx\n", hr);
+			NoJacketActivity ();
 			return;
 		}
 		context->CSSetShaderResources (0, 1, &shaderReadTexture);
@@ -257,6 +265,7 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		hr                                                = device->CreateUnorderedAccessView (newTexture, nullptr, &shaderReadWriteTexture);
 		if (FAILED (hr)) {
 			printf ("CreateUnorderedAccessView %lx\n", hr);
+			NoJacketActivity ();
 			return;
 		}
 		context->CSSetUnorderedAccessViews (0, 1, &shaderReadWriteTexture, nullptr);
@@ -280,6 +289,7 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		hr                              = device->CreateTexture2D (&stagingDesc, nullptr, &stagingTexture);
 		if (FAILED (hr)) {
 			printf ("CreateTexture2D %lx\n", hr);
+			NoJacketActivity ();
 			return;
 		}
 
@@ -289,6 +299,7 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		hr = context->Map (stagingTexture, 0, D3D11_MAP_READ, 0, &map);
 		if (FAILED (hr)) {
 			printf ("Map %lx\n", hr);
+			NoJacketActivity ();
 			return;
 		}
 

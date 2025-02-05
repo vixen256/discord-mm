@@ -574,9 +574,9 @@ struct ModuleData {
 	i32 chara;
 	i32 cos;
 	INSERT_PADDING (0x5C);
-	i32 sprSetId;
+	u32 sprSetId;
 	i32 unk_0x70;
-	i32 spriteId;
+	u32 spriteId;
 	i32 unk_0x74;
 	i32 unk_0x78;
 	string name;
@@ -588,11 +588,11 @@ struct ModuleData {
 
 struct PvSpriteId {
 	PvDbEntry *pvData;
-	i32 setId;
-	i32 bgId[4];
-	i32 jkId[4];
-	i32 logoId[4];
-	i32 thumbId[4];
+	u32 setId;
+	u32 bgId[4];
+	u32 jkId[4];
+	u32 logoId[4];
+	u32 thumbId[4];
 };
 
 struct PvLoadInfo {
