@@ -144,7 +144,43 @@ HOOK (i64, SongEnd, 0x14043B040) {
 HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a3) {
 	originalSetPvLoadData (PvLoadData, info, a3);
 	if (auto sprites = pvSprites->find (info->pvId)) {
-		if (sprites.value ()->jkId[info->difficulty] <= 0) return;
+		if (sprites.value ()->jkId[info->difficulty] <= 0) {
+			if (auto pppv = getPvDbEntry (pvInfo->pvId)) {
+				auto pv = **pppv;
+				DiscordActivity activity;
+				memset (&activity, 0, sizeof (activity));
+				strcpy (activity.assets.large_image, "miku");
+				strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
+				strcpy (activity.state, pv->name.c_str ());
+				switch (pvInfo->difficulty) {
+				case 0:
+					strcpy (activity.assets.small_image, "easy");
+					strcpy (activity.assets.small_text, "Easy");
+					break;
+				case 1:
+					strcpy (activity.assets.small_image, "normal");
+					strcpy (activity.assets.small_text, "Normal");
+					break;
+				case 2:
+					strcpy (activity.assets.small_image, "hard");
+					strcpy (activity.assets.small_text, "Hard");
+					break;
+				case 3:
+					strcpy (activity.assets.small_image, "extreme");
+					strcpy (activity.assets.small_text, "Extreme");
+					break;
+				}
+				if (pvInfo->extra == true) {
+					strcpy (activity.assets.small_image, "extra");
+					strcpy (activity.assets.small_text, "ExExtreme");
+				}
+				activity.timestamps.start = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ();
+
+				activities->clear_activity (activities, 0, UpdateActivityCallback);
+				activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
+			}
+		}
+
 		pvInfo = (PvLoadInfo *)malloc (sizeof (PvLoadInfo));
 		memcpy (pvInfo, info, sizeof (PvLoadInfo));
 
