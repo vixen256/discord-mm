@@ -84,6 +84,8 @@ UploadImage () {
 
 	DeleteFile ("tmp.png");
 
+	printf ("[discord] Got image upload: %s\n", buf);
+
 	CreateDiscord ();
 
 	if (activities == nullptr || core == nullptr || pvInfo == nullptr) return;
@@ -118,6 +120,7 @@ UploadImage () {
 		}
 		activity.timestamps.start = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ();
 
+		activities->clear_activity (activities, 0, UpdateActivityCallback);
 		activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 	}
 }
@@ -133,6 +136,7 @@ HOOK (i64, SongEnd, 0x14043B040) {
 	strcpy (activity.assets.large_image, "miku");
 	strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
 	strcpy (activity.state, "In menu");
+	activities->clear_activity (activities, 0, UpdateActivityCallback);
 	activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 	return originalSongEnd ();
 }
@@ -154,8 +158,8 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		texture->GetDesc (&desc);
 
 		D3D11_TEXTURE2D_DESC newDesc;
-		newDesc.Width              = newArgs->sprite_size.x;
-		newDesc.Height             = newArgs->sprite_size.y;
+		newDesc.Width              = newArgs->texture_size.x;
+		newDesc.Height             = newArgs->texture_size.y;
 		newDesc.MipLevels          = 1;
 		newDesc.ArraySize          = 1;
 		newDesc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -216,11 +220,11 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		}
 		context->CSSetUnorderedAccessViews (0, 1, &shaderReadWriteTexture, nullptr);
 
-		context->Dispatch (newArgs->sprite_size.x, newArgs->sprite_size.y, 1);
+		context->Dispatch (newArgs->texture_size.x, newArgs->texture_size.y, 1);
 
 		D3D11_TEXTURE2D_DESC stagingDesc;
-		stagingDesc.Width              = newArgs->sprite_size.x;
-		stagingDesc.Height             = newArgs->sprite_size.y;
+		stagingDesc.Width              = newArgs->texture_size.x;
+		stagingDesc.Height             = newArgs->texture_size.y;
 		stagingDesc.MipLevels          = 1;
 		stagingDesc.ArraySize          = 1;
 		stagingDesc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -250,11 +254,11 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		png_image png;
 		memset (&png, 0, sizeof (png_image));
 		png.version = PNG_IMAGE_VERSION;
-		png.width   = newArgs->sprite_size.x;
-		png.height  = newArgs->sprite_size.y;
+		png.width   = newArgs->texture_size.x;
+		png.height  = newArgs->texture_size.y;
 		png.format  = PNG_FORMAT_RGBA;
 
-		png_image_write_to_file (&png, "tmp.png", 0, map.pData, 0, nullptr);
+		png_image_write_to_file (&png, "tmp.png", 0, map.pData, map.RowPitch, nullptr);
 
 		context->Unmap (stagingTexture, 0);
 
@@ -266,6 +270,8 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 extern "C" {
 __declspec (dllexport) void
 init () {
+	freopen ("CONOUT$", "w", stdout);
+
 	INSTALL_HOOK (SetPvLoadData);
 	INSTALL_HOOK (SongEnd);
 
@@ -277,6 +283,7 @@ init () {
 	strcpy (activity.assets.large_image, "miku");
 	strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
 	strcpy (activity.state, "In menu");
+
 	activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 }
 
