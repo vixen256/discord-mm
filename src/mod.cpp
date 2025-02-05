@@ -144,15 +144,21 @@ HOOK (i64, SongEnd, 0x14043B040) {
 HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a3) {
 	originalSetPvLoadData (PvLoadData, info, a3);
 	if (auto sprites = pvSprites->find (info->pvId)) {
-		if (sprites.value ()->jkId[info->difficulty] <= 0) {
-			if (auto pppv = getPvDbEntry (pvInfo->pvId)) {
+		pvInfo = (PvLoadInfo *)malloc (sizeof (PvLoadInfo));
+		memcpy (pvInfo, info, sizeof (PvLoadInfo));
+
+		if (sprites.value ()->setId <= 0 || sprites.value ()->jkId[info->difficulty] <= 0) {
+			if (auto pppv = getPvDbEntry (info->pvId)) {
+				CreateDiscord ();
+				if (activities == nullptr || core == nullptr) return;
+
 				auto pv = **pppv;
 				DiscordActivity activity;
 				memset (&activity, 0, sizeof (activity));
 				strcpy (activity.assets.large_image, "miku");
 				strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
 				strcpy (activity.state, pv->name.c_str ());
-				switch (pvInfo->difficulty) {
+				switch (info->difficulty) {
 				case 0:
 					strcpy (activity.assets.small_image, "easy");
 					strcpy (activity.assets.small_text, "Easy");
@@ -179,10 +185,8 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 				activities->clear_activity (activities, 0, UpdateActivityCallback);
 				activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 			}
+			return;
 		}
-
-		pvInfo = (PvLoadInfo *)malloc (sizeof (PvLoadInfo));
-		memcpy (pvInfo, info, sizeof (PvLoadInfo));
 
 		HRESULT hr;
 		SprArgs args;
