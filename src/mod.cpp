@@ -120,7 +120,6 @@ UploadImage () {
 		}
 		activity.timestamps.start = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ();
 
-		activities->clear_activity (activities, 0, UpdateActivityCallback);
 		activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 	}
 }
@@ -136,7 +135,6 @@ HOOK (i64, SongEnd, 0x14043B040) {
 	strcpy (activity.assets.large_image, "miku");
 	strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
 	strcpy (activity.state, "In menu");
-	activities->clear_activity (activities, 0, UpdateActivityCallback);
 	activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 	return originalSongEnd ();
 }
@@ -177,7 +175,6 @@ NoJacketActivity () {
 		}
 		activity.timestamps.start = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ();
 
-		activities->clear_activity (activities, 0, UpdateActivityCallback);
 		activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 	}
 }
@@ -198,6 +195,11 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 		args.id      = sprites.value ()->jkId[info->difficulty];
 		args.layer   = 0;
 		auto newArgs = DrawSpr (&args);
+		if (!newArgs) {
+			// Fails during tutorial
+			NoJacketActivity ();
+			return;
+		}
 		auto texture = newArgs->dx_texture->texture;
 
 		D3D11_TEXTURE2D_DESC desc;
@@ -316,6 +318,8 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 
 		std::thread t (UploadImage);
 		t.detach ();
+	} else {
+		NoJacketActivity ();
 	}
 }
 
