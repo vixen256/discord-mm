@@ -12,4 +12,3 @@ void main(uint2 dispatchThreadId : SV_DispatchThreadID)
 {
     output[dispatchThreadId] = input[uint2(PixelOffset.x + dispatchThreadId.x, PixelOffset.y - dispatchThreadId.y)];
 }
-

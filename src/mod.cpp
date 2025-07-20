@@ -4,6 +4,7 @@ using namespace diva;
 ID3D11Device *device;
 ID3D11DeviceContext *context;
 ID3D11ComputeShader *shader;
+ID3D11ComputeShader *shaderYACbCr;
 
 struct Globals {
 	DirectX::XMUINT2 PixelOffset;
@@ -226,7 +227,8 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 			return;
 		}
 
-		context->CSSetShader (shader, nullptr, 0);
+		if (desc.Format == DXGI_FORMAT_BC5_UNORM) context->CSSetShader (shaderYACbCr, nullptr, 0);
+		else context->CSSetShader (shader, nullptr, 0);
 
 		Globals data;
 		data.PixelOffset.x = newArgs->texture_pos.x;
@@ -324,8 +326,7 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 }
 
 extern "C" {
-__declspec (dllexport) void
-init () {
+__declspec (dllexport) void init () {
 	freopen ("CONOUT$", "w", stdout);
 
 	INSTALL_HOOK (SetPvLoadData);
@@ -343,14 +344,17 @@ init () {
 	activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 }
 
-__declspec (dllexport) void
-D3DInit (IDXGISwapChain *SwapChain, ID3D11Device *Device, ID3D11DeviceContext *DeviceContext) {
+__declspec (dllexport) void D3DInit (IDXGISwapChain *SwapChain, ID3D11Device *Device, ID3D11DeviceContext *DeviceContext) {
 	device  = Device;
 	context = DeviceContext;
 
 	ID3DBlob *shaderBlob;
+	ID3DBlob *shaderYACbCrBlob;
 	ID3DBlob *errorBlob;
 	D3DCompileFromFile (L"shader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", 0, 0, &shaderBlob, &errorBlob);
 	device->CreateComputeShader (shaderBlob->GetBufferPointer (), shaderBlob->GetBufferSize (), nullptr, &shader);
+
+	D3DCompileFromFile (L"YACbCr.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", 0, 0, &shaderYACbCrBlob, &errorBlob);
+	device->CreateComputeShader (shaderYACbCrBlob->GetBufferPointer (), shaderYACbCrBlob->GetBufferSize (), nullptr, &shaderYACbCr);
 }
 }
