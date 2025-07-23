@@ -349,12 +349,23 @@ __declspec (dllexport) void D3DInit (IDXGISwapChain *SwapChain, ID3D11Device *De
 	context = DeviceContext;
 
 	ID3DBlob *shaderBlob;
-	ID3DBlob *shaderYACbCrBlob;
 	ID3DBlob *errorBlob;
-	D3DCompileFromFile (L"shader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", 0, 0, &shaderBlob, &errorBlob);
+	HRESULT hr;
+
+	hr = D3DCompileFromFile (L"shader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "rgb_main", "cs_5_0", 0, 0, &shaderBlob, &errorBlob);
+	if (FAILED (hr)) {
+		MessageBoxA (0, (char *)errorBlob->GetBufferPointer (), "Shader compiler error", MB_OK | MB_ICONERROR);
+		return;
+	}
+
 	device->CreateComputeShader (shaderBlob->GetBufferPointer (), shaderBlob->GetBufferSize (), nullptr, &shader);
 
-	D3DCompileFromFile (L"YACbCr.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", 0, 0, &shaderYACbCrBlob, &errorBlob);
-	device->CreateComputeShader (shaderYACbCrBlob->GetBufferPointer (), shaderYACbCrBlob->GetBufferSize (), nullptr, &shaderYACbCr);
+	hr = D3DCompileFromFile (L"shader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "yacbcr_main", "cs_5_0", 0, 0, &shaderBlob, &errorBlob);
+	if (FAILED (hr)) {
+		MessageBoxA (0, (char *)errorBlob->GetBufferPointer (), "Shader compiler error", MB_OK | MB_ICONERROR);
+		return;
+	}
+
+	device->CreateComputeShader (shaderBlob->GetBufferPointer (), shaderBlob->GetBufferSize (), nullptr, &shaderYACbCr);
 }
 }
