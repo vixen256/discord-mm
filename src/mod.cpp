@@ -59,8 +59,41 @@ NoJacketActivity () {
 		memset (&activity, 0, sizeof (activity));
 		strcpy (activity.assets.large_image, "now_printing");
 		strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
-		strcpy (activity.details, pv->name.c_str ());
-		strcpy (activity.state, "Playing a song");
+
+		auto diff = getPvDbDifficulty (pvInfo->pvId, pvInfo->difficulty, pvInfo->extra);
+		char details_buf[256];
+		if (diff.has_value () && diff.value ()->music.length > 0) sprintf (details_buf, "%s - %s", pv->name.c_str (), diff.value ()->music.c_str ());
+		else strcpy (details_buf, pv->name.c_str ());
+		strcpy (activity.details, details_buf);
+
+		if (diff.has_value () && diff.value ()->scriptFile.length > 0) {
+			string path (diff.value ()->scriptFile.c_str ());
+			if (ResolveFilePath (&path)) {
+				const char *str = path.c_str ();
+
+				while (str[0] == '.')
+					str += 2;
+
+				auto rom = strstr (str, "/rom/");
+				if (rom) {
+					char folderBuf[MAX_PATH];
+					memset (folderBuf, 0, MAX_PATH);
+					memcpy (folderBuf, str, (u64)rom - (u64)str);
+
+					if (strstr (folderBuf, modsPrefix)) strcpy (details_buf, folderBuf + strlen (modsPrefix) + 1);
+					else strcpy (details_buf, "Playing a song");
+				} else {
+					strcpy (details_buf, "Playing a song");
+				}
+
+			} else {
+				strcpy (details_buf, "Playing a song");
+			}
+		} else {
+			strcpy (details_buf, "Playing a song");
+		}
+
+		strcpy (activity.state, details_buf);
 		switch (pvInfo->difficulty) {
 		case 0:
 			strcpy (activity.assets.small_image, "easy");
