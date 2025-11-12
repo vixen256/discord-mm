@@ -715,6 +715,7 @@ extern vector<PvDbEntry *> *pvs;
 extern map<i32, PvSpriteId> *pvSprites;
 
 FUNCTION_PTR_H (SprArgs *, DrawSpr, SprArgs *args);
+FUNCTION_PTR_H (bool, ResolveFilePath, string *from);
 
 std::optional<PvDbEntry **> getPvDbEntry (i32 id);
 std::optional<PvDbDifficulty *> getPvDbDifficulty (i32 id, i32 difficulty, bool extra);

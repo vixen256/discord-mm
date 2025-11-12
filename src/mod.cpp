@@ -18,6 +18,8 @@ IDiscordActivityManager *activities = nullptr;
 
 PvLoadInfo *pvInfo = nullptr;
 
+char modsPrefix[MAX_PATH];
+
 void
 UpdateActivityCallback (void *, enum EDiscordResult result) {
 	if (result != DiscordResult_Ok) printf ("[discord] Activity update failed: %d\n", result);
@@ -164,9 +166,36 @@ UploadImage () {
 		char details_buf[256];
 		if (diff.has_value () && diff.value ()->music.length > 0) sprintf (details_buf, "%s - %s", pv->name.c_str (), diff.value ()->music.c_str ());
 		else strcpy (details_buf, pv->name.c_str ());
-
 		strcpy (activity.details, details_buf);
-		strcpy (activity.state, "Playing a song");
+
+		if (diff.has_value () && diff.value ()->scriptFile.length > 0) {
+			string path (diff.value ()->scriptFile.c_str ());
+			if (ResolveFilePath (&path)) {
+				const char *str = path.c_str ();
+
+				while (str[0] == '.')
+					str += 2;
+
+				auto rom = strstr (str, "/rom/");
+				if (rom) {
+					char folderBuf[MAX_PATH];
+					memset (folderBuf, 0, MAX_PATH);
+					memcpy (folderBuf, str, (u64)rom - (u64)str);
+
+					if (strstr (folderBuf, modsPrefix)) strcpy (details_buf, folderBuf + strlen (modsPrefix) + 1);
+					else strcpy (details_buf, "Playing a song");
+				} else {
+					strcpy (details_buf, "Playing a song");
+				}
+
+			} else {
+				strcpy (details_buf, "Playing a song");
+			}
+		} else {
+			strcpy (details_buf, "Playing a song");
+		}
+
+		strcpy (activity.state, details_buf);
 		switch (pvInfo->difficulty) {
 		case 0:
 			strcpy (activity.assets.small_image, "easy");
@@ -358,6 +387,17 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 extern "C" {
 __declspec (dllexport) void
 init () {
+	auto file   = fopen ("../../config.toml", "r");
+	auto config = toml_parse_file (file, nullptr, 0);
+	fclose (file);
+	if (config) {
+		auto data = toml_string_in (config, "mods");
+		if (data.ok) strcpy (modsPrefix, data.u.s);
+		else strcpy (modsPrefix, "mods");
+	} else {
+		strcpy (modsPrefix, "mods");
+	}
+
 	freopen ("CONOUT$", "w", stdout);
 
 	INSTALL_HOOK (SetPvLoadData);

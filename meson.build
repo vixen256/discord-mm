@@ -29,6 +29,7 @@ add_project_link_arguments(
 )
 
 minhook = subproject('minhook')
+tomlc99 = subproject('tomlc99')
 libpng = subproject('libpng', default_options: ['default_library=static'])
 curl = subproject('curl', default_options: ['default_library=static'])
 discord = subproject('discord')
@@ -41,6 +42,7 @@ library(
 	cpp_pch : 'src/helpers.h',
 	dependencies : [
 		minhook.get_variable('minhook_dep'),
+		tomlc99.get_variable('tomlc99_dep'),
 		libpng.get_variable('libpng_dep'),
 		curl.get_variable('curl_dep'),
 		discord.get_variable('discord_dep'),
