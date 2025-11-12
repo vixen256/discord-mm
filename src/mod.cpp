@@ -14,6 +14,8 @@ struct Globals {
 IDiscordCore *core                  = nullptr;
 IDiscordActivityManager *activities = nullptr;
 
+PvLoadInfo *pvInfo = nullptr;
+
 void
 UpdateActivityCallback (void *, enum EDiscordResult result) {
 	if (result != DiscordResult_Ok) printf ("[discord] Activity update failed: %d\n", result);
@@ -42,21 +44,73 @@ CreateDiscord () {
 	t.detach ();
 }
 
-u64
-curlWriteCallback (char *data, u64 size, u64 nmemb, char *buf) {
-	strcat (buf, data);
-	buf[size * nmemb] = 0;
-	return size * nmemb;
+void
+NoJacketActivity () {
+	if (auto pppv = getPvDbEntry (pvInfo->pvId)) {
+		CreateDiscord ();
+		if (activities == nullptr || core == nullptr) return;
+
+		auto pv = **pppv;
+		DiscordActivity activity;
+		memset (&activity, 0, sizeof (activity));
+		strcpy (activity.assets.large_image, "now_printing");
+		strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
+		strcpy (activity.state, pv->name.c_str ());
+		switch (pvInfo->difficulty) {
+		case 0:
+			strcpy (activity.assets.small_image, "easy");
+			strcpy (activity.assets.small_text, "Easy");
+			break;
+		case 1:
+			strcpy (activity.assets.small_image, "normal");
+			strcpy (activity.assets.small_text, "Normal");
+			break;
+		case 2:
+			strcpy (activity.assets.small_image, "hard");
+			strcpy (activity.assets.small_text, "Hard");
+			break;
+		case 3:
+			strcpy (activity.assets.small_image, "extreme");
+			strcpy (activity.assets.small_text, "Extreme");
+			break;
+		}
+		if (pvInfo->extra == true) {
+			strcpy (activity.assets.small_image, "extra");
+			strcpy (activity.assets.small_text, "ExExtreme");
+		}
+		activity.timestamps.start = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ();
+
+		activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
+	}
 }
 
-PvLoadInfo *pvInfo = nullptr;
+u64
+curlWriteCallback (char *data, u64 size, size_t nmemb, string *buf) {
+	buf->extend (nmemb);
+	memcpy (buf->c_str () + buf->length, data, nmemb);
+	buf->length += nmemb;
+	buf->c_str ()[buf->length] = 0;
+	return nmemb;
+}
 
 void
 UploadImage () {
-	curl_global_init (CURL_GLOBAL_ALL);
+	CURLcode res;
+	res = curl_global_init (CURL_GLOBAL_ALL);
+	if (res != CURLE_OK) {
+		DeleteFile ("tmp.png");
+		NoJacketActivity ();
+		return;
+	}
 
 	auto curl      = curl_easy_init ();
 	auto multipart = curl_mime_init (curl);
+
+	if (curl == nullptr || multipart == nullptr) {
+		DeleteFile ("tmp.png");
+		NoJacketActivity ();
+		return;
+	}
 
 	auto part = curl_mime_addpart (multipart);
 	curl_mime_name (part, "reqtype");
@@ -70,22 +124,28 @@ UploadImage () {
 	curl_mime_name (part, "fileToUpload");
 	curl_mime_filedata (part, "tmp.png");
 
-	char buf[256];
-	memset (buf, 0, 256);
+	string buf;
+	buf.extend (64);
 
 	curl_easy_setopt (curl, CURLOPT_URL, "https://litterbox.catbox.moe/resources/internals/api.php");
 	curl_easy_setopt (curl, CURLOPT_MIMEPOST, multipart);
 	curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
-	curl_easy_setopt (curl, CURLOPT_WRITEDATA, buf);
+	curl_easy_setopt (curl, CURLOPT_WRITEDATA, &buf);
 
-	curl_easy_perform (curl);
+	res = curl_easy_perform (curl);
 
 	curl_mime_free (multipart);
 	curl_easy_cleanup (curl);
 
+	if (res != CURLE_OK) {
+		DeleteFile ("tmp.png");
+		NoJacketActivity ();
+		return;
+	}
+
 	DeleteFile ("tmp.png");
 
-	printf ("[discord] Got image upload: %s\n", buf);
+	printf ("[discord] Got image upload: %s\n", buf.c_str ());
 
 	CreateDiscord ();
 
@@ -94,7 +154,7 @@ UploadImage () {
 		auto pv = **pppv;
 		DiscordActivity activity;
 		memset (&activity, 0, sizeof (activity));
-		strcpy (activity.assets.large_image, buf);
+		strcpy (activity.assets.large_image, buf.c_str ());
 		strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
 		strcpy (activity.state, pv->name.c_str ());
 		switch (pvInfo->difficulty) {
@@ -138,46 +198,6 @@ HOOK (i64, SongEnd, 0x14043B040) {
 	strcpy (activity.state, "In menu");
 	activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 	return originalSongEnd ();
-}
-
-void
-NoJacketActivity () {
-	if (auto pppv = getPvDbEntry (pvInfo->pvId)) {
-		CreateDiscord ();
-		if (activities == nullptr || core == nullptr) return;
-
-		auto pv = **pppv;
-		DiscordActivity activity;
-		memset (&activity, 0, sizeof (activity));
-		strcpy (activity.assets.large_image, "now_printing");
-		strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
-		strcpy (activity.state, pv->name.c_str ());
-		switch (pvInfo->difficulty) {
-		case 0:
-			strcpy (activity.assets.small_image, "easy");
-			strcpy (activity.assets.small_text, "Easy");
-			break;
-		case 1:
-			strcpy (activity.assets.small_image, "normal");
-			strcpy (activity.assets.small_text, "Normal");
-			break;
-		case 2:
-			strcpy (activity.assets.small_image, "hard");
-			strcpy (activity.assets.small_text, "Hard");
-			break;
-		case 3:
-			strcpy (activity.assets.small_image, "extreme");
-			strcpy (activity.assets.small_text, "Extreme");
-			break;
-		}
-		if (pvInfo->extra == true) {
-			strcpy (activity.assets.small_image, "extra");
-			strcpy (activity.assets.small_text, "ExExtreme");
-		}
-		activity.timestamps.start = std::chrono::duration_cast<std::chrono::seconds> (std::chrono::system_clock::now ().time_since_epoch ()).count ();
-
-		activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
-	}
 }
 
 HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a3) {
@@ -326,7 +346,8 @@ HOOK (void, SetPvLoadData, 0x14040B600, u64 PvLoadData, PvLoadInfo *info, bool a
 }
 
 extern "C" {
-__declspec (dllexport) void init () {
+__declspec (dllexport) void
+init () {
 	freopen ("CONOUT$", "w", stdout);
 
 	INSTALL_HOOK (SetPvLoadData);
@@ -344,7 +365,8 @@ __declspec (dllexport) void init () {
 	activities->update_activity (activities, &activity, 0, UpdateActivityCallback);
 }
 
-__declspec (dllexport) void D3DInit (IDXGISwapChain *SwapChain, ID3D11Device *Device, ID3D11DeviceContext *DeviceContext) {
+__declspec (dllexport) void
+D3DInit (IDXGISwapChain *SwapChain, ID3D11Device *Device, ID3D11DeviceContext *DeviceContext) {
 	device  = Device;
 	context = DeviceContext;
 
