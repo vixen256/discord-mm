@@ -55,7 +55,8 @@ NoJacketActivity () {
 		memset (&activity, 0, sizeof (activity));
 		strcpy (activity.assets.large_image, "now_printing");
 		strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
-		strcpy (activity.state, pv->name.c_str ());
+		strcpy (activity.details, pv->name.c_str ());
+		strcpy (activity.state, "Playing a song");
 		switch (pvInfo->difficulty) {
 		case 0:
 			strcpy (activity.assets.small_image, "easy");
@@ -156,7 +157,14 @@ UploadImage () {
 		memset (&activity, 0, sizeof (activity));
 		strcpy (activity.assets.large_image, buf.c_str ());
 		strcpy (activity.assets.large_text, "Project DIVA MegaMix+");
-		strcpy (activity.state, pv->name.c_str ());
+
+		auto diff = getPvDbDifficulty (pvInfo->pvId, pvInfo->difficulty, pvInfo->extra);
+		char details_buf[256];
+		if (diff.has_value () && diff.value ()->music.length > 0) sprintf (details_buf, "%s - %s", pv->name.c_str (), diff.value ()->music.c_str ());
+		else strcpy (details_buf, pv->name.c_str ());
+
+		strcpy (activity.details, details_buf);
+		strcpy (activity.state, "Playing a song");
 		switch (pvInfo->difficulty) {
 		case 0:
 			strcpy (activity.assets.small_image, "easy");
