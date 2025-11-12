@@ -1,4 +1,6 @@
 #include "diva.h"
+#include "shader_rgb.fxh"
+#include "shader_yacbcr.fxh"
 
 using namespace diva;
 ID3D11Device *device;
@@ -378,24 +380,7 @@ D3DInit (IDXGISwapChain *SwapChain, ID3D11Device *Device, ID3D11DeviceContext *D
 	device  = Device;
 	context = DeviceContext;
 
-	ID3DBlob *shaderBlob;
-	ID3DBlob *errorBlob;
-	HRESULT hr;
-
-	hr = D3DCompileFromFile (L"shader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "rgb_main", "cs_5_0", 0, 0, &shaderBlob, &errorBlob);
-	if (FAILED (hr)) {
-		MessageBoxA (0, (char *)errorBlob->GetBufferPointer (), "Shader compiler error", MB_OK | MB_ICONERROR);
-		return;
-	}
-
-	device->CreateComputeShader (shaderBlob->GetBufferPointer (), shaderBlob->GetBufferSize (), nullptr, &shader);
-
-	hr = D3DCompileFromFile (L"shader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "yacbcr_main", "cs_5_0", 0, 0, &shaderBlob, &errorBlob);
-	if (FAILED (hr)) {
-		MessageBoxA (0, (char *)errorBlob->GetBufferPointer (), "Shader compiler error", MB_OK | MB_ICONERROR);
-		return;
-	}
-
-	device->CreateComputeShader (shaderBlob->GetBufferPointer (), shaderBlob->GetBufferSize (), nullptr, &shaderYACbCr);
+	device->CreateComputeShader (shader_rgb_bytecode, sizeof (shader_rgb_bytecode), nullptr, &shader);
+	device->CreateComputeShader (shader_yacbcr_bytecode, sizeof (shader_yacbcr_bytecode), nullptr, &shaderYACbCr);
 }
 }
